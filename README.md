@@ -1,16 +1,9 @@
-# checkin
+# Checkin
 
-A new Flutter project.
+## An app that lets you track your activities github style.
 
-## Getting Started
+## It's available on Android.
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![Screenshot_20240815_212023](https://github.com/user-attachments/assets/d1141da5-49f9-42c7-85b2-e35c1f87a904)
