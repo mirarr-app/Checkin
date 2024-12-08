@@ -1,5 +1,4 @@
 import 'package:Checkin/activity_calendar.dart';
-import 'package:Checkin/custom_divider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -25,18 +24,21 @@ class CalendarData {
   Map<String, int> activities;
   Color color;
   int max;
+  int daysToShow;
 
   CalendarData(
       {required this.name,
       required this.activities,
       required this.color,
-      required this.max});
+      required this.max,
+      this.daysToShow = 365});
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'activities': activities,
         'color': color.value,
-        'max': max
+        'max': max,
+        'daysToShow': daysToShow
       };
 
   factory CalendarData.fromJson(Map<String, dynamic> json) => CalendarData(
@@ -45,6 +47,7 @@ class CalendarData {
         color:
             json['color'] != null ? Color(json['color'] as int) : Colors.orange,
         max: json['max'] != null ? json['max'] as int : 10,
+        daysToShow: json['daysToShow'] ?? 365,
       );
 }
 
@@ -81,6 +84,7 @@ class _MainScreenState extends State<MainScreen> {
             activities: _createEmptyCalendar(),
             color: Colors.orange,
             max: 10,
+            daysToShow: 365,
           )
         ];
         _saveCalendars();
@@ -102,6 +106,7 @@ class _MainScreenState extends State<MainScreen> {
           activities: _createEmptyCalendar(),
           color: Colors.orange,
           max: 10,
+          daysToShow: 365,
         )
       ];
       _saveCalendars();
@@ -144,6 +149,7 @@ class _MainScreenState extends State<MainScreen> {
             activities: _createEmptyCalendar(),
             color: color,
             max: max ?? 10,
+            daysToShow: 365,
           ));
           _saveCalendars();
         });
@@ -224,63 +230,62 @@ class _MainScreenState extends State<MainScreen> {
       builder: (BuildContext context) {
         int? max;
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
-            'Max Activities',
-            style: TextStyle(color: Colors.orange),
+            'Daily Goal',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           content: TextField(
+            autofocus: true,
             autocorrect: false,
-            onChanged: (value) {
-              // Parse the input string to an integer
-              max = int.tryParse(value);
-            },
+            onChanged: (value) => max = int.tryParse(value),
             style: const TextStyle(
-              color: Colors.black,
+              fontSize: 16,
             ),
-            cursorColor: Colors.black,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelStyle: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
+              hintText: 'Enter maximum daily activities',
               filled: true,
-              fillColor: Colors.orangeAccent[200],
+              fillColor: Colors.grey[800],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
               focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(10.0),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.orange, width: 2),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text(
+              child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: Colors.grey[400]),
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Colors.orange),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.orange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              child: const Text('Set Goal'),
               onPressed: () {
-                // Only pop with a value if max is not null
                 if (max != null) {
                   Navigator.of(context).pop(max);
                 } else {
-                  // Optionally, show an error message if no valid number was entered
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Please enter a valid number')),
+                      content: Text('Please enter a valid number'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               },
@@ -297,54 +302,53 @@ class _MainScreenState extends State<MainScreen> {
       builder: (BuildContext context) {
         String name = '';
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
-            'New Calendar Name',
-            style: TextStyle(color: Colors.orange),
+            'New Calendar',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           content: TextField(
+            autofocus: true,
             autocorrect: false,
-            onChanged: (value) {
-              name = value;
-            },
+            onChanged: (value) => name = value,
             style: const TextStyle(
-              color: Colors.black,
+              fontSize: 16,
             ),
-            cursorColor: Colors.black,
-            keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              labelStyle: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.bold),
+              hintText: 'Enter calendar name',
               filled: true,
-              fillColor: Colors.orangeAccent[200],
+              fillColor: Colors.grey[800],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
               focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(10.0),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.orange, width: 2),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text(
+              child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.orange),
+                style: TextStyle(color: Colors.grey[400]),
               ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Colors.orange),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.orange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              onPressed: () {
-                Navigator.of(context).pop(name);
-              },
+              child: const Text('Create'),
+              onPressed: () => Navigator.of(context).pop(name),
             ),
           ],
         );
@@ -366,25 +370,37 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Calendar',
-              style: TextStyle(color: Colors.orange)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Delete ${_calendars[index].name}?',
+            style: TextStyle(
+              color: _calendars[index].color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: Text(
-              'Are you sure you want to delete "${_calendars[index].name}"?',
-              style: const TextStyle(color: Colors.white)),
+            'This action cannot be undone.',
+            style: TextStyle(color: Colors.grey[300]),
+          ),
           actions: <Widget>[
             TextButton(
-              child:
-                  const Text('Cancel', style: TextStyle(color: Colors.orange)),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[400]),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
             ),
-            TextButton(
-              child:
-                  const Text('Delete', style: TextStyle(color: Colors.orange)),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.withOpacity(0.2),
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
         );
@@ -404,135 +420,178 @@ class _MainScreenState extends State<MainScreen> {
     return Builder(
       builder: (context) => Scaffold(
         appBar: AppBar(
-          title: const Text('Activity Calendars'),
-          backgroundColor: Colors.orange,
-          elevation: 3,
-          centerTitle: false,
+          title: const Text(
+            'Activity Calendars',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _addNewCalendar,
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: _addNewCalendar,
+              ),
             ),
           ],
         ),
-        body: ListView.builder(
-          itemCount: _calendars.length,
-          itemBuilder: (context, index) {
-            final calendar = _calendars[index];
-            final activityList = _generateDateKeys(_sharedDaysCount(context))
-                .map((key) => calendar.activities[key] ?? 0)
-                .toList();
+        body: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: ListView.builder(
+            itemCount: _calendars.length,
+            itemBuilder: (context, index) {
+              final calendar = _calendars[index];
+              final activityList = _generateDateKeys(calendar.daysToShow)
+                  .map((key) => calendar.activities[key] ?? 0)
+                  .toList();
 
-            return Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 0, 0),
-                      child: Text(
-                        calendar.name,
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: calendar.color),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(5, 5, 5, 0),
-                          child: ElevatedButton(
-                            style: ButtonStyle(
-                                backgroundColor:
-                                    WidgetStateProperty.all(calendar.color)),
-                            onPressed: () => _incrementToday(index),
-                            child: const Text(
-                              'Check in',
-                              style: TextStyle(
-                                color: Colors.black,
-                              ),
+              return Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            calendar.name,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: calendar.color,
                             ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: calendar.color),
-                          onPressed: () => _deleteCalendar(index),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const CustomDivider(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                  child: SizedBox(
-                    height: 235,
-                    child: Row(
-                      children: [
-                        Column(
-                          children: [
-                            for (final weekday in _weekdays)
-                              SizedBox(
-                                height: 30,
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                                  child: Center(
-                                    child: Text(
-                                      weekday,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey),
+                          Row(
+                            children: [
+                              FilledButton.tonal(
+                                onPressed: () => _incrementToday(index),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      calendar.color.withOpacity(0.2),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.add,
+                                        size: 18, color: calendar.color),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Check in',
+                                      style: TextStyle(
+                                          color: calendar.color,
+                                          fontFamily: "RobotoMono"),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
-                          ],
-                        ),
-                        Expanded(
-                          child: Column(
+                              PopupMenuButton<int>(
+                                icon: Icon(Icons.calendar_month,
+                                    color: calendar.color),
+                                onSelected: (days) {
+                                  setState(() {
+                                    calendar.daysToShow = days;
+                                    _saveCalendars();
+                                  });
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                      value: 30, child: Text('30 Days')),
+                                  const PopupMenuItem(
+                                      value: 60, child: Text('60 Days')),
+                                  const PopupMenuItem(
+                                      value: 180, child: Text('180 Days')),
+                                  const PopupMenuItem(
+                                      value: 365, child: Text('365 Days')),
+                                ],
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete_outline,
+                                    color: calendar.color),
+                                onPressed: () => _deleteCalendar(index),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 8, 8, 0),
+                        child: SizedBox(
+                          height: 120,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                height: 208,
+                              Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  for (final weekday in _weekdays)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 1),
+                                      child: SizedBox(
+                                        height: 16,
+                                        child: Text(
+                                          weekday[0],
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.withOpacity(0.8),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
                                 child: ActivityCalendar(
                                   activities: activityList,
-                                  fromColor: Colors.grey[900],
+                                  fromColor: Colors.grey[850],
                                   toColor: calendar.color,
-                                  steps: calendar.max,
-                                  spacing: 5,
-                                  borderRadius: BorderRadius.circular(4),
+                                  steps: 5,
+                                  spacing: 3,
+                                  borderRadius: BorderRadius.circular(2),
                                   weekday: _sharedWeekday(context),
                                   scrollDirection: _sharedOrientation(context),
                                   reverse: _sharedOrientation(context) ==
                                       Axis.horizontal,
                                   tooltipBuilder: TooltipBuilder.rich(
-                                    builder: (i) => TextSpan(children: [
-                                      TextSpan(
-                                        text:
-                                            '${activityList[i]} ${activityList[i] > 0 ? 'times' : 'time'}',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white),
-                                      ),
-                                      TextSpan(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[900],
+                                    ),
+                                    builder: (i) => TextSpan(
+                                      children: [
+                                        TextSpan(
                                           text:
-                                              ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}'),
-                                    ]),
+                                              '${activityList[i]} ${activityList[i] == 1 ? 'activity' : 'activities'}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                              ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}',
+                                          style: TextStyle(
+                                            color: Colors.grey[200],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
