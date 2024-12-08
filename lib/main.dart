@@ -11,26 +11,26 @@ class Checkin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Checkin',
-        theme: ThemeData(
-          fontFamily: 'Poppins',
-          colorScheme: const ColorScheme(
-            brightness: Brightness.light,
-            primary: Colors.orange,
-            onPrimary: Colors.blue,
-            secondary: Colors.purple,
-            onSecondary: Colors.deepPurple,
-            error: Colors.red,
-            onError: Colors.orange,
-            background: Colors.black,
-            onBackground: Colors.black,
-            surface: Colors.black,
-            onSurface: Colors.black,
-          ),
-          cardColor: Theme.of(context).primaryColor,
-          scaffoldBackgroundColor: Colors.black,
+      debugShowCheckedModeBanner: false,
+      title: 'Checkin',
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Poppins',
+        colorScheme: ColorScheme.dark(
+          primary: Colors.orange.shade400,
+          secondary: Colors.orange.shade200,
+          surface: Colors.grey.shade900,
+          onSurface: Colors.white,
         ),
-        home: MainScreen());
+        cardColor: Colors.grey.shade900,
+        scaffoldBackgroundColor: Colors.black,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.grey.shade900,
+          elevation: 0,
+          centerTitle: true,
+        ),
+      ),
+      home: const MainScreen(),
+    );
   }
 }
