@@ -2,6 +2,7 @@ import 'package:Checkin/activity_calendar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 
 class MainScreen extends StatefulWidget {
@@ -62,12 +63,104 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _today = DateTime.now();
     _initHive();
+    homeScreenWidgetSync();
   }
 
   Future<void> _initHive() async {
     await Hive.initFlutter();
     _calendarsBox = await Hive.openBox<Map>('calendars');
     _loadCalendars();
+  }
+
+  Future<void> homeScreenWidgetSync() async {
+    if (_calendars.isEmpty) return;
+
+    final widget = MediaQuery(
+      data: const MediaQueryData(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Material(
+          color: Colors.transparent,
+          child: SizedBox(
+            width: double.infinity,
+            height: 200,
+            child: Card(
+              color: Colors.grey[900],
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _calendars[0].name,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontFamily: "RobotoMono",
+                        fontWeight: FontWeight.bold,
+                        color: _calendars[0].color,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            for (final weekday in _weekdays)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 1),
+                                child: SizedBox(
+                                  height: 16,
+                                  child: Text(
+                                    weekday[0],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        SizedBox(
+                          width: 340,
+                          height: 120,
+                          child: ActivityCalendar(
+                            activities:
+                                _generateDateKeys(_calendars[0].daysToShow)
+                                    .map((key) =>
+                                        _calendars[0].activities[key] ?? 0)
+                                    .toList(),
+                            fromColor: Colors.grey[850],
+                            toColor: _calendars[0].color,
+                            steps: 5,
+                            spacing: 3,
+                            borderRadius: BorderRadius.circular(2),
+                            weekday: DateTime.now().weekday,
+                            scrollDirection: Axis.horizontal,
+                            reverse: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await HomeWidget.renderFlutterWidget(
+      widget,
+      key: 'CalendarWidget',
+      logicalSize: const Size(400, 200),
+    );
+
+    await HomeWidget.updateWidget(name: 'ObservableWidget');
   }
 
   void _loadCalendars() {
@@ -363,6 +456,7 @@ class _MainScreenState extends State<MainScreen> {
           (_calendars[calendarIndex].activities[todayKey] ?? 0) + 1;
       _saveCalendars();
     });
+    homeScreenWidgetSync();
   }
 
   Future<void> _deleteCalendar(int index) async {
