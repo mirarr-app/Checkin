@@ -38,10 +38,6 @@ jobs:
       - name: Verify APK signature (jarsigner)
         run: |
           jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
-
-      - name: APK Info
-        run: |
-          $ANDROID_HOME/build-tools/33.0.0/aapt dump badging build/app/outputs/flutter-apk/app-release.apk
       - name: List APK Directory
         run: ls -alh ${{ github.workspace }}/build/app/outputs/flutter-apk
       - name: Upload APK
