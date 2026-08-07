@@ -9,7 +9,7 @@ class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
-  _MainScreenState createState() => _MainScreenState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
 const int numberOfZeroes = 365;
@@ -37,7 +37,7 @@ class CalendarData {
   Map<String, dynamic> toJson() => {
         'name': name,
         'activities': activities,
-        'color': color.value,
+        'color': color.toARGB32(),
         'max': max,
         'daysToShow': daysToShow
       };
@@ -115,10 +115,10 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 16,
                                   child: Text(
                                     weekday[0],
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.withOpacity(0.8),
-                                    ),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.withValues(alpha: 0.8),
+                                      ),
                                   ),
                                 ),
                               ),
@@ -232,9 +232,12 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _addNewCalendar() async {
     String? name = await _showNameDialog();
+    if (!mounted) return;
     if (name != null && name.isNotEmpty) {
       int? max = await _showMaxDialog();
+      if (!mounted) return;
       Color? color = await _selectColor(context: context);
+      if (!mounted) return;
       if (color != null) {
         setState(() {
           _calendars.add(CalendarData(
@@ -488,7 +491,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.withOpacity(0.2),
+                backgroundColor: Colors.red.withValues(alpha: 0.2),
               ),
               child: const Text(
                 'Delete',
@@ -562,10 +565,10 @@ class _MainScreenState extends State<MainScreen> {
                             children: [
                               FilledButton.tonal(
                                 onPressed: () => _incrementToday(index),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      calendar.color.withOpacity(0.2),
-                                ),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor:
+                                        calendar.color.withValues(alpha: 0.2),
+                                  ),
                                 child: Row(
                                   children: [
                                     Icon(Icons.add,
@@ -628,10 +631,10 @@ class _MainScreenState extends State<MainScreen> {
                                         height: 16,
                                         child: Text(
                                           weekday[0],
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.withOpacity(0.8),
-                                          ),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.withValues(alpha: 0.8),
+                                            ),
                                         ),
                                       ),
                                     ),

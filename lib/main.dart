@@ -6,7 +6,7 @@ void main() {
 }
 
 class Checkin extends StatelessWidget {
-  const Checkin({Key? key}) : super(key: key);
+  const Checkin({super.key});
 
   @override
   Widget build(BuildContext context) {

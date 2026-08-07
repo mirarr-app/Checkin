@@ -58,7 +58,7 @@ class TooltipBuilder {
 
 class ActivityCalendar extends StatelessWidget {
   const ActivityCalendar({
-    Key? key,
+    super.key,
     this.fromColor,
     this.toColor,
     this.steps = 5,
@@ -84,8 +84,7 @@ class ActivityCalendar extends StatelessWidget {
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
     this.tooltipBuilder,
-  })  : assert(steps >= 2),
-        super(key: key);
+  })  : assert(steps >= 2);
 
   final Color? fromColor;
 
@@ -155,13 +154,17 @@ class ActivityCalendar extends StatelessWidget {
     BorderRadius borderRadius,
   ) {
     final map = <int, Widget>{};
-    final da = to.alpha - from.alpha;
-    final dr = to.red - from.red;
-    final dg = to.green - from.green;
-    final db = to.blue - from.blue;
+    final da = (to.a - from.a) * 255;
+    final dr = (to.r - from.r) * 255;
+    final dg = (to.g - from.g) * 255;
+    final db = (to.b - from.b) * 255;
+    final fromA = (from.a * 255).round();
+    final fromR = (from.r * 255).round();
+    final fromG = (from.g * 255).round();
+    final fromB = (from.b * 255).round();
     for (int i = 0; i < steps; i++) {
       if (i == 0) {
-        final color = Colors.grey.withOpacity(0.2);
+        final color = Colors.grey.withValues(alpha: 0.2);
         map[i] = Container(
           decoration: BoxDecoration(
             color: color,
@@ -172,10 +175,10 @@ class ActivityCalendar extends StatelessWidget {
       }
       final index = (i + 0 * (max / (steps - 1))).toInt();
       final color = Color.fromARGB(
-        (from.alpha + i * (da / (steps - 1))).toInt(),
-        (from.red + i * (dr / (steps - 1))).toInt(),
-        (from.green + i * (dg / (steps - 1))).toInt(),
-        (from.blue + i * (db / (steps - 1))).toInt(),
+        (fromA + i * (da / (steps - 1))).round().clamp(0, 255),
+        (fromR + i * (dr / (steps - 1))).round().clamp(0, 255),
+        (fromG + i * (dg / (steps - 1))).round().clamp(0, 255),
+        (fromB + i * (db / (steps - 1))).round().clamp(0, 255),
       );
       map[index] = Container(
         decoration: BoxDecoration(
@@ -200,7 +203,7 @@ class ActivityCalendar extends StatelessWidget {
       borderRadius,
     );
 
-    int _findSegment(int activity) {
+    int findSegment(int activity) {
       return mapOfTiles.keys.firstWhere(
         (key) => activity <= key,
         orElse: () => mapOfTiles.keys.last,
@@ -210,7 +213,7 @@ class ActivityCalendar extends StatelessWidget {
     // Calculate segments (steps) once, so we don't do it every time.
     final segments = List.generate(
       activities.length,
-      (i) => _findSegment(activities[i]),
+      (i) => findSegment(activities[i]),
       growable: false,
     );
 
