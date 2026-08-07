@@ -1,7 +1,6 @@
 import 'package:Checkin/activity_calendar.dart';
 import 'package:Checkin/core/app_config.dart';
 import 'package:Checkin/core/services/version_check_service.dart';
-import 'package:Checkin/theme/app_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
