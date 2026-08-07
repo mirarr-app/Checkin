@@ -4,49 +4,66 @@ on: workflow_dispatch
 
 jobs:
   build_android:
-    name: Build APK
+    name: Build Android APKs
     runs-on: ubuntu-latest
     env:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '17' 
+          java-version: '22'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-      - uses: actions/checkout@v2
+          flutter-version: '3.38.5'
       - run: flutter pub get
 
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE }}" | base64 --decode > android/app/keystore.jks
 
-      - name: Build APK
-        run: |
-          flutter build apk --release
+      - name: Build APK (arm64-v8a)
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
         env:
           KEYSTORE_FILE: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      - name: Verify APK signature (jarsigner)
+
+      - name: Build APK (armeabi-v7a)
+        run: flutter build apk --release --split-per-abi --target-platform android-arm
+        env:
+          KEYSTORE_FILE: keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Build Universal APK
+        run: flutter build apk --release
+        env:
+          KEYSTORE_FILE: keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Verify APK signatures
         run: |
+          jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
+
       - name: List APK Directory
         run: ls -alh ${{ github.workspace }}/build/app/outputs/flutter-apk
-      - name: Upload APK
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: ${{ github.workspace }}/build/app/outputs/flutter-apk/app-release.apk
-
-  
+          name: android-apks
+          path: ${{ github.workspace }}/build/app/outputs/flutter-apk/*.apk
 
   upload-release:
     permissions: write-all
@@ -62,19 +79,19 @@ jobs:
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Download APK
+      - name: Download Android APKs
         uses: actions/download-artifact@v4
         with:
-          name: apk
-          path: ./out/
+          name: android-apks
+          path: ./out/android
 
+      - name: List output directory
+        run: ls -R ./out
 
       - name: Upload Release
         uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
-          files: ./out/*
+          files: ./out/android/*.apk
           tag_name: ${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
