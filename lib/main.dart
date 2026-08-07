@@ -1,4 +1,5 @@
 import 'package:Checkin/mainscreen.dart';
+import 'package:Checkin/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -10,27 +11,19 @@ class Checkin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Checkin',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Poppins',
-        colorScheme: ColorScheme.dark(
-          primary: Colors.orange.shade400,
-          secondary: Colors.orange.shade200,
-          surface: Colors.grey.shade900,
-          onSurface: Colors.white,
-        ),
-        cardColor: Colors.grey.shade900,
-        scaffoldBackgroundColor: Colors.black,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.grey.shade900,
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
-      home: const MainScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Checkin',
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: themeMode,
+          home: const MainScreen(),
+        );
+      },
     );
   }
 }
+

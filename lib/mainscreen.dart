@@ -1,9 +1,14 @@
 import 'package:Checkin/activity_calendar.dart';
+import 'package:Checkin/theme/app_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:m3e_core/m3e_core.dart';
+
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,9 +19,7 @@ class MainScreen extends StatefulWidget {
 
 const int numberOfZeroes = 365;
 final DateFormat _weekdayFormat = DateFormat.E();
-
 final DateFormat _tooltipFormat = DateFormat.MMMEd();
-
 final List<String> _weekdays =
     List.generate(7, (i) => _weekdayFormat.format(DateTime(2000, 0, 6 + i)));
 
@@ -27,26 +30,26 @@ class CalendarData {
   int max;
   int daysToShow;
 
-  CalendarData(
-      {required this.name,
-      required this.activities,
-      required this.color,
-      required this.max,
-      this.daysToShow = 365});
+  CalendarData({
+    required this.name,
+    required this.activities,
+    required this.color,
+    required this.max,
+    this.daysToShow = 365,
+  });
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'activities': activities,
         'color': color.toARGB32(),
         'max': max,
-        'daysToShow': daysToShow
+        'daysToShow': daysToShow,
       };
 
   factory CalendarData.fromJson(Map<String, dynamic> json) => CalendarData(
         name: json['name'],
         activities: Map<String, int>.from(json['activities']),
-        color:
-            json['color'] != null ? Color(json['color'] as int) : Colors.orange,
+        color: json['color'] != null ? Color(json['color'] as int) : Colors.orange,
         max: json['max'] != null ? json['max'] as int : 10,
         daysToShow: json['daysToShow'] ?? 365,
       );
@@ -57,19 +60,23 @@ class _MainScreenState extends State<MainScreen> {
   List<CalendarData> _calendars = [];
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
   late DateTime _today;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _today = DateTime.now();
     _initHive();
-    homeScreenWidgetSync();
   }
 
   Future<void> _initHive() async {
     await Hive.initFlutter();
     _calendarsBox = await Hive.openBox<Map>('calendars');
     _loadCalendars();
+    setState(() {
+      _isLoading = false;
+    });
+    homeScreenWidgetSync();
   }
 
   Future<void> homeScreenWidgetSync() async {
@@ -115,10 +122,10 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 16,
                                   child: Text(
                                     weekday[0],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.withValues(alpha: 0.8),
-                                      ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.withValues(alpha: 0.8),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -128,11 +135,9 @@ class _MainScreenState extends State<MainScreen> {
                           width: 340,
                           height: 120,
                           child: ActivityCalendar(
-                            activities:
-                                _generateDateKeys(_calendars[0].daysToShow)
-                                    .map((key) =>
-                                        _calendars[0].activities[key] ?? 0)
-                                    .toList(),
+                            activities: _generateDateKeys(_calendars[0].daysToShow)
+                                .map((key) => _calendars[0].activities[key] ?? 0)
+                                .toList(),
                             fromColor: Colors.grey[850],
                             toColor: _calendars[0].color,
                             steps: 5,
@@ -170,40 +175,35 @@ class _MainScreenState extends State<MainScreen> {
           .toList();
 
       if (_calendars.isEmpty) {
-        // Initialize with a default calendar if empty
         _calendars = [
           CalendarData(
-            name: 'Calendar',
+            name: 'Daily Check-in',
             activities: _createEmptyCalendar(),
-            color: Colors.orange,
+            color: const Color(0xFFFF9800),
             max: 10,
             daysToShow: 365,
           )
         ];
         _saveCalendars();
       } else {
-        // Ensure all calendars have up-to-date keys
         for (var calendar in _calendars) {
           _ensureDataShift(calendar.activities);
         }
       }
-      setState(() {});
     } catch (e) {
       if (kDebugMode) {
         print('Error loading calendars: $e');
       }
-      // Handle the error, maybe reset to a default state
       _calendars = [
         CalendarData(
-          name: 'Calendar',
+          name: 'Daily Check-in',
           activities: _createEmptyCalendar(),
-          color: Colors.orange,
+          color: const Color(0xFFFF9800),
           max: 10,
           daysToShow: 365,
         )
       ];
       _saveCalendars();
-      setState(() {});
     }
   }
 
@@ -217,9 +217,8 @@ class _MainScreenState extends State<MainScreen> {
   void _ensureDataShift(Map<String, int> activities) {
     final todayKey = _dateFormat.format(_today);
     if (!activities.containsKey(todayKey)) {
-      // Today's key doesn't exist, shift the data
       final newActivities = <String, int>{};
-      newActivities[todayKey] = 0; // Add today with 0 activity
+      newActivities[todayKey] = 0;
 
       _generateDateKeys(_sharedDaysCount(context) - 1).forEach((dateKey) {
         newActivities[dateKey] = activities[dateKey] ?? 0;
@@ -231,6 +230,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _addNewCalendar() async {
+    HapticFeedback.lightImpact();
     String? name = await _showNameDialog();
     if (!mounted) return;
     if (name != null && name.isNotEmpty) {
@@ -239,6 +239,7 @@ class _MainScreenState extends State<MainScreen> {
       Color? color = await _selectColor(context: context);
       if (!mounted) return;
       if (color != null) {
+        HapticFeedback.mediumImpact();
         setState(() {
           _calendars.add(CalendarData(
             name: name,
@@ -249,58 +250,82 @@ class _MainScreenState extends State<MainScreen> {
           ));
           _saveCalendars();
         });
+        homeScreenWidgetSync();
       }
     }
   }
 
   Future<Color?> _selectColor({required BuildContext context}) async {
     final List<Color> colorOptions = [
-      const Color.fromARGB(255, 255, 51, 36),
-      const Color.fromARGB(255, 28, 153, 255),
-      const Color.fromARGB(255, 36, 255, 43),
-      const Color.fromARGB(255, 255, 234, 43),
-      const Color.fromARGB(255, 222, 36, 255),
-      const Color.fromARGB(255, 255, 166, 33),
-      const Color.fromARGB(255, 255, 67, 130),
-      const Color.fromARGB(255, 16, 255, 231),
+      const Color(0xFFFF5252),
+      const Color(0xFF448AFF),
+      const Color(0xFF69F0AE),
+      const Color(0xFFFFD740),
+      const Color(0xFFE040FB),
+      const Color(0xFFFF9100),
+      const Color(0xFFFF4081),
+      const Color(0xFF18FFFF),
+    ];
+
+    final List<Shapes> m3eShapes = [
+      Shapes.slanted,
+      Shapes.arch,
+      Shapes.circle,
+      Shapes.square,
+      Shapes.semicircle,
+      Shapes.slanted,
+      Shapes.arch,
+      Shapes.circle,
     ];
 
     return showDialog<Color?>(
       context: context,
       builder: (BuildContext context) {
+        final scheme = Theme.of(context).colorScheme;
         return AlertDialog(
-          title: const Text('Select Color'),
+          title: Row(
+            children: [
+              Icon(Icons.palette_outlined, color: scheme.primary),
+              const SizedBox(width: 10),
+              const Text('Expressive Palette'),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: colorOptions.map((Color color) {
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: List.generate(colorOptions.length, (index) {
+                final color = colorOptions[index];
+                final shape = m3eShapes[index];
                 return GestureDetector(
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Navigator.of(context).pop(color);
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 0, 0),
+                  child: ClipPath(
+                    clipper: M3EClipper(shape),
                     child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 2),
+                      width: 56,
+                      height: 56,
+                      color: color,
+                      child: Center(
+                        child: Icon(
+                          Icons.check,
+                          color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ),
           ),
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ],
         );
@@ -321,130 +346,145 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<int?> _showMaxDialog() async {
+    double currentVal = 10.0;
     return showDialog<int>(
       context: context,
       builder: (BuildContext context) {
-        int? max;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Daily Goal',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: TextField(
-            autofocus: true,
-            autocorrect: false,
-            onChanged: (value) => max = int.tryParse(value),
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              hintText: 'Enter maximum daily activities',
-              filled: true,
-              fillColor: Colors.grey[800],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+        final scheme = Theme.of(context).colorScheme;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.orange, width: 2),
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.orange,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              backgroundColor: scheme.surfaceContainerHigh,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: SizedBox(
+                  width: 320,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.flag_outlined, color: scheme.primary),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Daily Goal Target',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '${currentVal.round()} activities/day',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: scheme.primary,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      M3ESlider(
+                        value: currentVal,
+                        min: 1.0,
+                        max: 50.0,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            currentVal = val;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        children: [5, 10, 15, 20, 30].map((preset) {
+                          final isSelected = currentVal.round() == preset;
+                          return ChoiceChip(
+                            label: Text('$preset'),
+                            selected: isSelected,
+                            onSelected: (_) {
+                              HapticFeedback.selectionClick();
+                              setDialogState(() {
+                                currentVal = preset.toDouble();
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            child: const Text('Cancel'),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          const SizedBox(width: 8),
+                          M3EButton(
+                            size: M3EButtonSize.md,
+                            onPressed: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.of(context).pop(currentVal.round());
+                            },
+                            child: const Text('Set Goal'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: const Text('Set Goal'),
-              onPressed: () {
-                if (max != null) {
-                  Navigator.of(context).pop(max);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter a valid number'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );
   }
 
+
   Future<String?> _showNameDialog() async {
+    String name = '';
     return showDialog<String>(
       context: context,
       builder: (BuildContext context) {
-        String name = '';
+        final scheme = Theme.of(context).colorScheme;
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'New Calendar',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
+          title: Row(
+            children: [
+              Icon(Icons.edit_calendar, color: scheme.primary),
+              const SizedBox(width: 10),
+              const Text('New Tracker'),
+            ],
           ),
           content: TextField(
             autofocus: true,
             autocorrect: false,
             onChanged: (value) => name = value,
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Enter calendar name',
-              filled: true,
-              fillColor: Colors.grey[800],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.orange, width: 2),
-              ),
+            style: const TextStyle(fontSize: 16),
+            decoration: const InputDecoration(
+              hintText: 'e.g. Exercise, Reading, Coding',
+              labelText: 'Tracker Name',
             ),
           ),
           actions: <Widget>[
             TextButton(
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
+              child: const Text('Cancel'),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.orange,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+            M3EButton(
+              size: M3EButtonSize.md,
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                Navigator.of(context).pop(name);
+              },
               child: const Text('Create'),
-              onPressed: () => Navigator.of(context).pop(name),
             ),
           ],
         );
@@ -453,6 +493,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _incrementToday(int calendarIndex) {
+    HapticFeedback.mediumImpact();
     final todayKey = _dateFormat.format(_today);
     setState(() {
       _calendars[calendarIndex].activities[todayKey] =
@@ -463,13 +504,12 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _deleteCalendar(int index) async {
+    HapticFeedback.mediumImpact();
     bool confirmDelete = await showDialog(
       context: context,
       builder: (BuildContext context) {
+        final scheme = Theme.of(context).colorScheme;
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
           title: Text(
             'Delete ${_calendars[index].name}?',
             style: TextStyle(
@@ -478,26 +518,21 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           content: Text(
-            'This action cannot be undone.',
-            style: TextStyle(color: Colors.grey[300]),
+            'This action will permanently remove this activity calendar.',
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
           actions: <Widget>[
             TextButton(
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
+              child: const Text('Cancel'),
               onPressed: () => Navigator.of(context).pop(false),
             ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.withValues(alpha: 0.2),
-              ),
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
-              ),
+            M3EButton(
+              size: M3EButtonSize.md,
               onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                'Delete',
+                style: TextStyle(color: scheme.error),
+              ),
             ),
           ],
         );
@@ -509,186 +544,298 @@ class _MainScreenState extends State<MainScreen> {
         _calendars.removeAt(index);
         _saveCalendars();
       });
+      homeScreenWidgetSync();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Builder(
-      builder: (context) => Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Activity Calendars',
-            style: TextStyle(fontWeight: FontWeight.w600),
+    final scheme = Theme.of(context).colorScheme;
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < 600;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Checkin'),
+        actions: [
+          IconButton(
+            tooltip: 'Toggle Theme',
+            icon: ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeModeNotifier,
+              builder: (context, mode, _) {
+                return Icon(
+                  mode == ThemeMode.dark
+                      ? Icons.dark_mode_outlined
+                      : mode == ThemeMode.light
+                          ? Icons.light_mode_outlined
+                          : Icons.brightness_auto,
+                  color: scheme.onSurface,
+                );
+              },
+            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              themeModeNotifier.toggleTheme();
+            },
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: _addNewCalendar,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: M3EButton(
+              style: M3EButtonStyle.tonal,
+              size: M3EButtonSize.sm,
+              onPressed: _addNewCalendar,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 18),
+                  SizedBox(width: 4),
+                  Text('New'),
+                ],
               ),
             ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: ListView.builder(
-            itemCount: _calendars.length,
-            itemBuilder: (context, index) {
-              final calendar = _calendars[index];
-              final activityList = _generateDateKeys(calendar.daysToShow)
-                  .map((key) => calendar.activities[key] ?? 0)
-                  .toList();
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: M3ELoadingIndicator())
+          : _calendars.isEmpty
+              ? _buildEmptyState(context)
+              : Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isCompact ? 12 : 24,
+                    vertical: 12,
+                  ),
+                  child: M3EDismissibleCardList(
+                    itemCount: _calendars.length,
+                    style: const M3EDismissibleCardStyle(
+                      outerRadius: 24.0,
+                      innerRadius: 10.0,
+                      gap: 12.0,
+                    ),
+                    onDismiss: (index, direction) async {
+                      HapticFeedback.mediumImpact();
+                      final deletedName = _calendars[index].name;
+                      setState(() {
+                        _calendars.removeAt(index);
+                        _saveCalendars();
+                      });
+                      homeScreenWidgetSync();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Deleted "$deletedName"'),
+                        ),
+                      );
+                      return true;
+                    },
+                    itemBuilder: (context, index) {
+                      final calendar = _calendars[index];
+                      final activityList = _generateDateKeys(calendar.daysToShow)
+                          .map((key) => calendar.activities[key] ?? 0)
+                          .toList();
 
-              return Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            calendar.name,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: calendar.color,
-                            ),
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: calendar.color.withValues(alpha: 0.25),
+                            width: 1.5,
                           ),
-                          Row(
-                            children: [
-                              FilledButton.tonal(
-                                onPressed: () => _incrementToday(index),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor:
-                                        calendar.color.withValues(alpha: 0.2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    calendar.name,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: calendar.color,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                child: Row(
+                                ),
+                                Row(
                                   children: [
-                                    Icon(Icons.add,
-                                        size: 18, color: calendar.color),
+                                    M3EButton(
+                                      style: M3EButtonStyle.tonal,
+                                      size: M3EButtonSize.sm,
+                                      onPressed: () => _incrementToday(index),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.add, size: 18, color: calendar.color),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Check in',
+                                            style: TextStyle(
+                                              color: calendar.color,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'RobotoMono',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      'Check in',
-                                      style: TextStyle(
-                                          color: calendar.color,
-                                          fontFamily: "RobotoMono"),
+                                    PopupMenuButton<int>(
+                                      icon: Icon(Icons.calendar_month, color: calendar.color),
+                                      onSelected: (days) {
+                                        HapticFeedback.selectionClick();
+                                        setState(() {
+                                          calendar.daysToShow = days;
+                                          _saveCalendars();
+                                        });
+                                      },
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(value: 30, child: Text('30 Days')),
+                                        const PopupMenuItem(value: 60, child: Text('60 Days')),
+                                        const PopupMenuItem(value: 180, child: Text('180 Days')),
+                                        const PopupMenuItem(value: 365, child: Text('365 Days')),
+                                      ],
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline, color: calendar.color),
+                                      onPressed: () => _deleteCalendar(index),
                                     ),
                                   ],
                                 ),
-                              ),
-                              PopupMenuButton<int>(
-                                icon: Icon(Icons.calendar_month,
-                                    color: calendar.color),
-                                onSelected: (days) {
-                                  setState(() {
-                                    calendar.daysToShow = days;
-                                    _saveCalendars();
-                                  });
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                      value: 30, child: Text('30 Days')),
-                                  const PopupMenuItem(
-                                      value: 60, child: Text('60 Days')),
-                                  const PopupMenuItem(
-                                      value: 180, child: Text('180 Days')),
-                                  const PopupMenuItem(
-                                      value: 365, child: Text('365 Days')),
-                                ],
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.delete_outline,
-                                    color: calendar.color),
-                                onPressed: () => _deleteCalendar(index),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 8, 8, 0),
-                        child: SizedBox(
-                          height: 120,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 120,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  for (final weekday in _weekdays)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 1),
-                                      child: SizedBox(
-                                        height: 16,
-                                        child: Text(
-                                          weekday[0],
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.withValues(alpha: 0.8),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      for (final weekday in _weekdays)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 1),
+                                          child: SizedBox(
+                                            height: 16,
+                                            child: Text(
+                                              weekday[0],
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                              ),
                                             ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ActivityCalendar(
+                                      activities: activityList,
+                                      fromColor: scheme.surfaceContainerHighest,
+                                      toColor: calendar.color,
+                                      steps: 5,
+                                      spacing: 3,
+                                      borderRadius: BorderRadius.circular(3),
+                                      weekday: _sharedWeekday(context),
+                                      scrollDirection: _sharedOrientation(context),
+                                      reverse: _sharedOrientation(context) == Axis.horizontal,
+                                      tooltipBuilder: TooltipBuilder.rich(
+                                        decoration: BoxDecoration(
+                                          color: scheme.inverseSurface,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        builder: (i) => TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text:
+                                                  '${activityList[i]} ${activityList[i] == 1 ? 'activity' : 'activities'}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: scheme.onInverseSurface,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text:
+                                                  ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}',
+                                              style: TextStyle(
+                                                color: scheme.onInverseSurface.withValues(alpha: 0.8),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ActivityCalendar(
-                                  activities: activityList,
-                                  fromColor: Colors.grey[850],
-                                  toColor: calendar.color,
-                                  steps: 5,
-                                  spacing: 3,
-                                  borderRadius: BorderRadius.circular(2),
-                                  weekday: _sharedWeekday(context),
-                                  scrollDirection: _sharedOrientation(context),
-                                  reverse: _sharedOrientation(context) ==
-                                      Axis.horizontal,
-                                  tooltipBuilder: TooltipBuilder.rich(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[900],
-                                    ),
-                                    builder: (i) => TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text:
-                                              '${activityList[i]} ${activityList[i] == 1 ? 'activity' : 'activities'}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text:
-                                              ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}',
-                                          style: TextStyle(
-                                            color: Colors.grey[200],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-              );
-            },
-          ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ClipPath(
+              clipper: M3EClipper(Shapes.arch),
+              child: Container(
+                width: 96,
+                height: 96,
+                color: scheme.primaryContainer,
+                child: Icon(
+                  Icons.calendar_today_outlined,
+                  size: 48,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Trackers Yet',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create your first activity calendar to start tracking your daily habits and goals GitHub-style.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            M3EButton(
+              size: M3EButtonSize.lg,
+              onPressed: _addNewCalendar,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add),
+                  SizedBox(width: 8),
+                  Text('Create Tracker'),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -718,7 +865,3 @@ Axis _sharedOrientation(BuildContext context) => SharedAppData.getValue(
       _orientationKey,
       () => Axis.horizontal,
     );
-
-/// Helpful widgets
-
-

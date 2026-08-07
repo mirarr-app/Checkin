@@ -18,6 +18,7 @@ dependencies:
   flutter_colorpicker: ^1.1.0
   home_widget: ^0.7.0
   cupertino_icons: ^1.0.8
+  m3e_core: ^0.1.5
 
 dev_dependencies:
   flutter_test:

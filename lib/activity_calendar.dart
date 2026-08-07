@@ -1,7 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 typedef IndexedOnTap = void Function(int index);
+
+
 
 typedef TextTooltipBuilder = String Function(int index);
 
@@ -251,7 +254,10 @@ class ActivityCalendar extends StatelessWidget {
 
         if (onTap != null) {
           item = GestureDetector(
-            onTap: () => onTap!(index),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onTap!(index);
+            },
             child: item,
           );
         }
