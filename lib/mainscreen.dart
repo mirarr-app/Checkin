@@ -575,9 +575,9 @@ class _MainScreenState extends State<MainScreen> {
     homeScreenWidgetSync();
   }
 
-  Future<void> _deleteCalendar(int index) async {
+  Future<bool> _deleteCalendar(int index) async {
     HapticFeedback.mediumImpact();
-    bool confirmDelete = await showDialog(
+    bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         final scheme = Theme.of(context).colorScheme;
@@ -598,12 +598,15 @@ class _MainScreenState extends State<MainScreen> {
               child: const Text('Cancel'),
               onPressed: () => Navigator.of(context).pop(false),
             ),
-            M3EButton(
-              size: M3EButtonSize.md,
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
+              child: const Text(
                 'Delete',
-                style: TextStyle(color: scheme.error),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -611,13 +614,7 @@ class _MainScreenState extends State<MainScreen> {
       },
     );
 
-    if (confirmDelete == true) {
-      setState(() {
-        _calendars.removeAt(index);
-        _saveCalendars();
-      });
-      homeScreenWidgetSync();
-    }
+    return confirmDelete ?? false;
   }
 
   @override
@@ -627,244 +624,233 @@ class _MainScreenState extends State<MainScreen> {
     final isCompact = width < 600;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Checkin'),
-        actions: [
-          IconButton(
-            tooltip: 'Check for updates',
-            icon: Icon(
-              Icons.system_update_outlined,
-              color: scheme.onSurface,
-            ),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              _checkForUpdate(manual: true);
-            },
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addNewCalendar,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'New Tracker',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Poppins',
           ),
-          IconButton(
-            tooltip: 'Toggle Theme',
-            icon: ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeModeNotifier,
-              builder: (context, mode, _) {
-                return Icon(
-                  mode == ThemeMode.dark
-                      ? Icons.dark_mode_outlined
-                      : mode == ThemeMode.light
-                          ? Icons.light_mode_outlined
-                          : Icons.brightness_auto,
-                  color: scheme.onSurface,
-                );
-              },
-            ),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              themeModeNotifier.toggleTheme();
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: M3EButton(
-              style: M3EButtonStyle.tonal,
-              size: M3EButtonSize.sm,
-              onPressed: _addNewCalendar,
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 20 : 32,
+                vertical: 12,
+              ),
+              child: Row(
                 children: [
-                  Icon(Icons.add, size: 18),
-                  SizedBox(width: 4),
-                  Text('New'),
+                  Text(
+                    'Checkin',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: M3ELoadingIndicator())
-          : _calendars.isEmpty
-              ? _buildEmptyState(context)
-              : Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 12 : 24,
-                    vertical: 12,
-                  ),
-                  child: M3EDismissibleCardList(
-                    itemCount: _calendars.length,
-                    style: const M3EDismissibleCardStyle(
-                      outerRadius: 24.0,
-                      innerRadius: 10.0,
-                      gap: 12.0,
-                    ),
-                    onDismiss: (index, direction) async {
-                      HapticFeedback.mediumImpact();
-                      final deletedName = _calendars[index].name;
-                      setState(() {
-                        _calendars.removeAt(index);
-                        _saveCalendars();
-                      });
-                      homeScreenWidgetSync();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Deleted "$deletedName"'),
-                        ),
-                      );
-                      return true;
-                    },
-                    itemBuilder: (context, index) {
-                      final calendar = _calendars[index];
-                      final activityList = _generateDateKeys(calendar.daysToShow)
-                          .map((key) => calendar.activities[key] ?? 0)
-                          .toList();
-
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: calendar.color.withValues(alpha: 0.25),
-                            width: 1.5,
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: M3ELoadingIndicator())
+                  : _calendars.isEmpty
+                      ? _buildEmptyState(context)
+                      : Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isCompact ? 12 : 24,
+                            vertical: 8,
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    calendar.name,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: calendar.color,
+                          child: M3EDismissibleCardList(
+                            itemCount: _calendars.length,
+                            style: const M3EDismissibleCardStyle(
+                              outerRadius: 24.0,
+                              innerRadius: 10.0,
+                              gap: 12.0,
+                            ),
+                            onDismiss: (index, direction) async {
+                              final confirmed = await _deleteCalendar(index);
+                              if (confirmed) {
+                                final deletedName = _calendars[index].name;
+                                setState(() {
+                                  _calendars.removeAt(index);
+                                  _saveCalendars();
+                                });
+                                homeScreenWidgetSync();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Deleted "$deletedName"'),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                }
+                                return true;
+                              }
+                              return false;
+                            },
+                            itemBuilder: (context, index) {
+                              final calendar = _calendars[index];
+                              final activityList = _generateDateKeys(calendar.daysToShow)
+                                  .map((key) => calendar.activities[key] ?? 0)
+                                  .toList();
+                              final textColor = calendar.color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: calendar.color.withValues(alpha: 0.25),
+                                    width: 1.5,
                                   ),
                                 ),
-                                Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    M3EButton(
-                                      style: M3EButtonStyle.tonal,
-                                      size: M3EButtonSize.sm,
-                                      onPressed: () => _incrementToday(index),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.add, size: 18, color: calendar.color),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Check in',
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            calendar.name,
                                             style: TextStyle(
-                                              color: calendar.color,
+                                              fontSize: 20,
                                               fontWeight: FontWeight.bold,
-                                              fontFamily: 'RobotoMono',
+                                              color: calendar.color,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            IconButton.filled(
+                                              onPressed: () => _incrementToday(index),
+                                              icon: Icon(
+                                                Icons.add_rounded,
+                                                size: 20,
+                                                color: textColor,
+                                              ),
+                                              tooltip: 'Check in today',
+                                              style: IconButton.styleFrom(
+                                                backgroundColor: calendar.color,
+                                                foregroundColor: textColor,
+                                                elevation: 2,
+                                                shadowColor: calendar.color.withValues(alpha: 0.4),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            PopupMenuButton<int>(
+                                              icon: Icon(Icons.calendar_month, color: calendar.color),
+
+                                              onSelected: (days) {
+                                                HapticFeedback.selectionClick();
+                                                setState(() {
+                                                  calendar.daysToShow = days;
+                                                  _saveCalendars();
+                                                });
+                                              },
+                                              itemBuilder: (context) => [
+                                                const PopupMenuItem(value: 30, child: Text('30 Days')),
+                                                const PopupMenuItem(value: 60, child: Text('60 Days')),
+                                                const PopupMenuItem(value: 180, child: Text('180 Days')),
+                                                const PopupMenuItem(value: 365, child: Text('365 Days')),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      height: 120,
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              for (final weekday in _weekdays)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(bottom: 1),
+                                                  child: SizedBox(
+                                                    height: 16,
+                                                    child: Text(
+                                                      weekday[0],
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: ActivityCalendar(
+                                              activities: activityList,
+                                              fromColor: scheme.surfaceContainerHighest,
+                                              toColor: calendar.color,
+                                              steps: 5,
+                                              spacing: 3,
+                                              borderRadius: BorderRadius.circular(3),
+                                              weekday: _sharedWeekday(context),
+                                              scrollDirection: _sharedOrientation(context),
+                                              reverse: _sharedOrientation(context) == Axis.horizontal,
+                                              tooltipBuilder: TooltipBuilder.rich(
+                                                decoration: BoxDecoration(
+                                                  color: scheme.inverseSurface,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                builder: (i) => TextSpan(
+                                                  children: [
+                                                    TextSpan(
+                                                      text:
+                                                          '${activityList[i]} ${activityList[i] == 1 ? 'activity' : 'activities'}',
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        color: scheme.onInverseSurface,
+                                                      ),
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                          ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}',
+                                                      style: TextStyle(
+                                                        color: scheme.onInverseSurface.withValues(alpha: 0.8),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    PopupMenuButton<int>(
-                                      icon: Icon(Icons.calendar_month, color: calendar.color),
-                                      onSelected: (days) {
-                                        HapticFeedback.selectionClick();
-                                        setState(() {
-                                          calendar.daysToShow = days;
-                                          _saveCalendars();
-                                        });
-                                      },
-                                      itemBuilder: (context) => [
-                                        const PopupMenuItem(value: 30, child: Text('30 Days')),
-                                        const PopupMenuItem(value: 60, child: Text('60 Days')),
-                                        const PopupMenuItem(value: 180, child: Text('180 Days')),
-                                        const PopupMenuItem(value: 365, child: Text('365 Days')),
-                                      ],
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete_outline, color: calendar.color),
-                                      onPressed: () => _deleteCalendar(index),
-                                    ),
                                   ],
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 120,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      for (final weekday in _weekdays)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 1),
-                                          child: SizedBox(
-                                            height: 16,
-                                            child: Text(
-                                              weekday[0],
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ActivityCalendar(
-                                      activities: activityList,
-                                      fromColor: scheme.surfaceContainerHighest,
-                                      toColor: calendar.color,
-                                      steps: 5,
-                                      spacing: 3,
-                                      borderRadius: BorderRadius.circular(3),
-                                      weekday: _sharedWeekday(context),
-                                      scrollDirection: _sharedOrientation(context),
-                                      reverse: _sharedOrientation(context) == Axis.horizontal,
-                                      tooltipBuilder: TooltipBuilder.rich(
-                                        decoration: BoxDecoration(
-                                          color: scheme.inverseSurface,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        builder: (i) => TextSpan(
-                                          children: [
-                                            TextSpan(
-                                              text:
-                                                  '${activityList[i]} ${activityList[i] == 1 ? 'activity' : 'activities'}',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: scheme.onInverseSurface,
-                                              ),
-                                            ),
-                                            TextSpan(
-                                              text:
-                                                  ' on ${_tooltipFormat.format(_today.subtract(Duration(days: i)))}',
-                                              style: TextStyle(
-                                                color: scheme.onInverseSurface.withValues(alpha: 0.8),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
 
   Widget _buildEmptyState(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
