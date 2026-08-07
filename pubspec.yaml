@@ -19,6 +19,8 @@ dependencies:
   home_widget: ^0.7.0
   cupertino_icons: ^1.0.8
   m3e_core: ^0.1.5
+  http: ^1.6.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

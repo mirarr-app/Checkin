@@ -1,4 +1,6 @@
 import 'package:Checkin/activity_calendar.dart';
+import 'package:Checkin/core/app_config.dart';
+import 'package:Checkin/core/services/version_check_service.dart';
 import 'package:Checkin/theme/app_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:m3e_core/m3e_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 
@@ -61,12 +64,81 @@ class _MainScreenState extends State<MainScreen> {
   final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
   late DateTime _today;
   bool _isLoading = true;
+  bool _versionCheckDone = false;
 
   @override
   void initState() {
     super.initState();
     _today = DateTime.now();
     _initHive();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
+  }
+
+  Future<void> _checkForUpdate({bool manual = false}) async {
+    if ((_versionCheckDone && !manual) || !mounted) return;
+    _versionCheckDone = true;
+    final latest = await checkForUpdate(appVersion);
+    if (!mounted) return;
+    if (latest != null) {
+      _showUpdateDialog(latest);
+    } else if (manual) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Checkin is up to date!'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showUpdateDialog(String latestVersion) async {
+    final context = this.context;
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.system_update, color: Colors.amber),
+            SizedBox(width: 8),
+            Text('Update available'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'A new version of Checkin is available.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Current: $appVersion  →  Latest: $latestVersion',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'monospace',
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final uri = Uri.parse(releasesPageUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('Open releases'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initHive() async {
@@ -558,6 +630,17 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         title: const Text('Checkin'),
         actions: [
+          IconButton(
+            tooltip: 'Check for updates',
+            icon: Icon(
+              Icons.system_update_outlined,
+              color: scheme.onSurface,
+            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _checkForUpdate(manual: true);
+            },
+          ),
           IconButton(
             tooltip: 'Toggle Theme',
             icon: ValueListenableBuilder<ThemeMode>(
